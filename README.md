@@ -13,7 +13,8 @@ Security status and cost management are usually tracked separately: a security t
 
 AWS Systems Manager - Amazon S3 - AWS Lambda (Python) - Amazon SNS - IAM - PowerShell 7 / pwsh (AWS.Tools.EC2, AWS.Tools.S3)
 
-Features
+##Features
+
 <img width="632" height="198" alt="features" src="https://github.com/user-attachments/assets/8c842f8c-5053-4520-9373-23c172cc286b" />
 
 ## Setup
