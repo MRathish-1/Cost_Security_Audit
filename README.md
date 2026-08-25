@@ -39,6 +39,6 @@ Features
 
 ## Testing
 
-The remote-access exposure check was validated end-to-end with a live before/after test: opened SSH to `0.0.0.0/0` on a running Linux instance, confirmed the pipeline correctly flagged it CRITICAL via email with a 75/100 score, then reverted the rule and confirmed the score returned to 100/100 HEALTHY.
+The remote-access exposure check was validated end-to-end with a live before/after test: opened RDP/SSH to `0.0.0.0/0` on a running Linux instance, confirmed the pipeline correctly flagged it CRITICAL via email with a 75/100 score, then reverted the rule and confirmed the score returned to 100/100 HEALTHY.
 
 The remaining checks - patch staleness, privileged-account sprawl, endpoint protection, and all three cost checks - executed successfully against the live fleet and returned accurate baseline data (e.g. correctly identifying zero unattached volumes, zero idle EIPs, host firewall active), but weren't tested against a deliberately engineered failure state.
