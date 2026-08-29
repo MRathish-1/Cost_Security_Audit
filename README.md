@@ -11,25 +11,31 @@ Security status and cost management are usually tracked separately: a security t
 
 ## Tech stack
 
-AWS Systems Manager - Amazon S3 - AWS Lambda (Python) - Amazon SNS - IAM - PowerShell 7 / pwsh (AWS.Tools.EC2, AWS.Tools.S3)
+AWS Systems Manager - Amazon S3 - AWS Lambda (Python) - Amazon SNS - IAM - Terraform - PowerShell 7 / pwsh (AWS.Tools.EC2, AWS.Tools.S3)
 
-##Features
+## Features
+- **Security checks (unified field names across OS):**
+   <img width="632" height="198" alt="features" src="https://github.com/user-attachments/assets/8c842f8c-5053-4520-9373-23c172cc286b" />
 
-<img width="632" height="198" alt="features" src="https://github.com/user-attachments/assets/8c842f8c-5053-4520-9373-23c172cc286b" />
+- **Cost checks (identical on both OS, since they only call the AWS API):** unattached EBS volumes (with GB wasted), idle Elastic IPs, instances stopped more than 7 days.
+- **Scoring:** each instance gets a 0-100 health score with weighted deductions, bucketed into HEALTHY / NEEDS ATTENTION / CRITICAL.
+- **Fleet-scale by tag, either OS:** SSM Run Command targets instances by tag, scaling to any mix of Windows and Linux boxes without touching RDP or SSH.
+- **Auto-remediation (Terraform build only):** an open remote-access port is revoked immediately, scoped by an IAM tag condition plus an independent code-level check that refuses to ever touch the default security group.
 
 ## Setup
 
-1. **Launch EC2 instance(s)** on the free tier (t3.micro/t2.micro) - Windows Server 2022 and Ubuntu 22.04 LTS were used and tested here; other Linux distros (e.g. Amazon Linux) may need adjustments to the patch-log detection logic. Add Tag to instances e.g. 'Role=CSAManaged'.
-2. **Install PowerShell 7 on each instance** via a user-data bootstrap script. This is required because '$IsWindows'/'$IsLinux' are PS6+ automatic variables and neither AMI ships PS7 by default.
+Both builds share the same audit script and report logic - they differ in how the infrastructure gets created.
 
-   > **Note:** installing PS7 doesn't automatically gives the AWS Tools modules. Install **AWS.Tools.Installer** and the needed sub-modules (**AWS.Tools.S3**, **AWS.Tools.EC2**) explicitly under PS7's module path, and invoke the audit script via 'pwsh -File'/'pwsh -Command' rather than relying on SSM's default interpreter - **AWS-RunPowerShellScript** invokes Windows PowerShell 5.1 by default on Windows targets, which won't see modules installed under PS7.
+### Manual Build (`manual-build/`)
 
-3. **Attach the instance role** using the policy in 'iam/ec2-instance-role-policy.json' plus the AWS-managed 'AmazonSSMManagedInstanceCore' policy.
-4. **Create the S3 bucket** (e.g. 'csa-reports-rm1') with a 'data/' prefix and '.json' as suffix.
-5. **Deploy the Lambda** from 'lambda/csa_report_gen.py', set the 'SNS_TOPIC_ARN' environment variable, and attach the policy in 'iam/lambda-execution-role-policy.json'.
-6. **Add an S3 trigger** on the Lambda for 'ObjectCreated' events under 'data/'.
-7. **Create an SNS topic** and subscribe your email.
-8. **Run the script** via SSM Run Command ('AWS-RunPowerShellScript', invoking 'pwsh' explicitly) targeting instances by tag.
+1. Launch EC2 instance(s) on the free tier (t3.micro/t2.micro) - Windows Server 2022 and Ubuntu 22.04 LTS were used and tested here; other Linux distros (e.g. Amazon Linux) may need adjustments to the patch-log detection logic. Also add tag to instances e.g. 'Role=CSAManaged'.
+2. Install PowerShell 7 on each instance via a user-data bootstrap script. This is required because '$IsWindows'/'$IsLinux' are PS6+ automatic variables and neither AMI ships PS7 by default. (see `ISSUES_AND_FIXES.md` for reference).
+3. Attach the instance role using [`manual-build/iam/ec2-instance-role-policy.json`](manual-build/iam/ec2-instance-role-policy.json) plus the AWS-managed `AmazonSSMManagedInstanceCore` policy.
+4. Create the S3 bucket (e.g. 'csa-reports-rm1') with a 'data/' prefix and '.json' as suffix. upload [`manual-build/lambda/CSA_audit.ps1`](manual-build/lambda/CSA_audit.ps1) to `scripts/`.
+5. Deploy [`manual-build/lambda/csa_report_gen.py`](manual-build/lambda/csa_report_gen.py) as a Lambda, set `SNS_TOPIC_ARN`, attach [`manual-build/iam/lambda-execution-role-policy.json`](manual-build/iam/lambda-execution-role-policy.json).
+6. Add an S3 trigger on the Lambda for 'ObjectCreated' events under 'data/'.
+7. Create an SNS topic and subscribe your email.
+8. Run the script via SSM Run Command ('AWS-RunPowerShellScript', invoking 'pwsh' explicitly) targeting instances by tag.
 
 ## Sample report
 
