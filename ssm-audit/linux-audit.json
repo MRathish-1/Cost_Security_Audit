@@ -1,0 +1,3 @@
+{
+ "commands":["pwsh -Command \"Read-S3Object -BucketName csa-reports-yourname -Key scripts/CSA_audit.ps1 -File /tmp/audit.ps1; /tmp/audit.ps1 -S3BucketName csa-reports-yourname\""]
+}

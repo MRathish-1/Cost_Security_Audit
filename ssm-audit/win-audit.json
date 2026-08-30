@@ -1,0 +1,7 @@
+{
+  "commands": [
+    "New-Item -ItemType Directory -Path C:\\tmp -Force -ErrorAction SilentlyContinue | Out-Null",
+    "& 'C:\\Program Files\\PowerShell\\7\\pwsh.exe' -Command \"Read-S3Object -BucketName csa-reports-yourname -Key scripts/CSA_audit.ps1 -File C:\\audit.ps1\"",
+    "& 'C:\\Program Files\\PowerShell\\7\\pwsh.exe' -File C:\\audit.ps1 -S3BucketName csa-reports-yourname"
+  ]
+}
