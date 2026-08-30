@@ -37,6 +37,22 @@ Both builds share the same audit script and report logic - they differ in how th
 7. Create an SNS topic and subscribe your email.
 8. Run the script via SSM Run Command ('AWS-RunPowerShellScript', invoking 'pwsh' explicitly) targeting instances by tag.
 
+### Option B - Terraform-automated build (`terraform-automated/`)
+
+1. `cd terraform-automated`, `cp terraform.tfvars.example terraform.tfvars`, fill in a unique `bucket_name`, your `alert_email`, and your `my_ip_cidr` (find it via `curl ifconfig.me` or similar) - 
+2. run `terraform init` to download the AWS and archive providers.
+3. run `terraform plan` - which will compute and list out what would be created without touching AWS yet. confirm no resource is missed out from list.
+4. run `terraform apply` and type `yes` when prompted to confirm. Terraform creates resources in dependency order automatically so ensure iam policy first and then lambda policies are referenced.
+5. Confirm the SNS email subscription (Note: check in spam)
+6. Wait 8-10 minutes for both instances to finish bootstrapping - the user-data scripts install PS7 and the AWS Tools modules on first boot (see `ISSUES_AND_FIXES.md` #1-2 for a real failure mode here), which takes longer than the bare instance launch. Then trigger an audit via SSM Run Command targeting instances by tag, same as the manual build.
+7. `terraform destroy` when done - tears down all applied resources.
+## Auto-remediation design (Terraform build)
+
+Configure Lambda to modify live security groups without manual approval. Two checks enforce it:
+
+1. **IAM condition, scoped by tag** - `ec2:RevokeSecurityGroupIngress` only works against security groups tagged `Role=CSAManaged`; AWS enforces this at the permission boundary before the Lambda's code even runs.
+2. **Hard-coded guardrail** - the Lambda separately re-checks that same tag and unconditionally refuses to touch a security group named `default`, since that one's often silently relied on by unrelated infrastructure and tagging discipline can drift.
+
 ## Sample report
 
 <img width="1022" height="262" alt="SNS_email_linux" src="https://github.com/user-attachments/assets/84f300ca-2d3a-49df-bb5d-85ee81cd23d3" />
@@ -46,6 +62,6 @@ Both builds share the same audit script and report logic - they differ in how th
 
 ## Testing
 
-The remote-access exposure check was validated end-to-end with a live before/after test: opened RDP/SSH to `0.0.0.0/0` on a running Linux instance, confirmed the pipeline correctly flagged it CRITICAL via email with a 75/100 score, then reverted the rule and confirmed the score returned to 100/100 HEALTHY.
+The remote-access exposure check was validated end-to-end with a live before/after test: opened RDP/SSH to `0.0.0.0/0` on a running Windows / Linux instance, confirmed the pipeline correctly flagged it CRITICAL via email with a 75/100 score, then **Manual-build** - manually reverted the rule and confirmed a score returned to 100/100 HEALTHY, & **Terraform build** - confirmed the Lambda revoked the rule automatically and the follow-up audit came back clean without any manual fix.
 
-The remaining checks - patch staleness, privileged-account sprawl, endpoint protection, and all three cost checks - executed successfully against the live fleet and returned accurate baseline data (e.g. correctly identifying zero unattached volumes, zero idle EIPs, host firewall active), but weren't tested against a deliberately engineered failure state.
+The remaining checks - patch staleness, privileged-account sprawl, endpoint protection, and all three cost checks - executed successfully against the live fleet and returned accurate baseline data, but weren't tested against a deliberately engineered failure state.
