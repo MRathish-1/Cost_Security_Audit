@@ -1,13 +1,17 @@
-# AWS-Project
-For learning and building mini project focused AWS infra environment.
-
-# Cost & Security Auditor
+# Cost & Security Auditor (CSA)
 
 A single tool to automate audits across a **Multi OS (Windows and Linux)** EC2 fleet for **security exposure** and **cost waste** in one pass, no agents to install or bastion host and no standing cost.
 
 ## The problem
 
 Security status and cost management are usually tracked separately: a security team checks for open remote-access ports and missing patches, while a cost team hunts for idle EBS volumes and orphaned Elastic IPs. In practice, both jobs come from the same root cause - resources nobody is actively managing and especially in SMB organisation where 1 - 2 member of infra support team taking care of all. This tasks can be automated - so this project checks both in one automated sweep, and does it across whichever OS the fleet actually runs, since real environments are rarely single-OS.
+
+## Architecture
+### Manual Build
+   <img width="1078" height="404" alt="CSA_Architecture_Manual" src="https://github.com/user-attachments/assets/53c9a560-e6e9-4fdd-a087-84399ddf56f8" />
+
+### Terraform-Automated Build
+   <img width="1078" height="460" alt="CSA_Architecture_Auto" src="https://github.com/user-attachments/assets/c413ada5-673b-4721-b8c6-84505ceb6e20" />
 
 ## Tech stack
 
@@ -37,7 +41,7 @@ Both builds share the same audit script and report logic - they differ in how th
 7. Create an SNS topic and subscribe your email.
 8. Run the script via SSM Run Command ('AWS-RunPowerShellScript', invoking 'pwsh' explicitly) targeting instances by tag.
 
-### Option B - Terraform-automated build (`terraform-automated/`)
+### Terraform-automated build (`terraform-automated/`)
 
 1. `cd terraform-automated`, `cp terraform.tfvars.example terraform.tfvars`, fill in a unique `bucket_name`, your `alert_email`, and your `my_ip_cidr` (find it via `curl ifconfig.me` or similar) - 
 2. run `terraform init` to download the AWS and archive providers.
@@ -46,6 +50,7 @@ Both builds share the same audit script and report logic - they differ in how th
 5. Confirm the SNS email subscription (Note: check in spam)
 6. Wait 8-10 minutes for both instances to finish bootstrapping - the user-data scripts install PS7 and the AWS Tools modules on first boot (see `ISSUES_AND_FIXES.md` #1-2 for a real failure mode here), which takes longer than the bare instance launch. Then trigger an audit via SSM Run Command targeting instances by tag, same as the manual build.
 7. `terraform destroy` when done - tears down all applied resources.
+
 ## Auto-remediation design (Terraform build)
 
 Configure Lambda to modify live security groups without manual approval. Two checks enforce it:
