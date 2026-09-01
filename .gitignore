@@ -1,0 +1,14 @@
+# Terraform
+terraform.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Lambda build artifacts
+*.zip
+function.zip
+
+# OS/editor cruft
+.DS_Store
+*.swp
